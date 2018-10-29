@@ -7,20 +7,22 @@ void input_handle(char c [],char *pars[])
 {
    int num_of_words=0 , lineflag;
    fgets(c,100,stdin); // read line
-   lineflag = remove_endOfText(c); // remove \n from the end of input line
+   lineflag = remove_endOfText(c); // remove \n from the end of input line and will be 1 if not empty command
    if(lineflag)
         num_of_words = parsing(c,pars);
-   printf("num of words is : %d\n",num_of_words);
-   int i = 0;
-   while(i<num_of_words)
-   {
-       printf("%s\n",pars[i]);
-       i++;
-   }
+        if(!num_of_words&&lineflag) // if command ware just spaces we print no command entered
+            printf("no command entered!\n");
+
+    // here we will check what is the command and then we call fun which response for handle this fun
 }
 
 int  remove_endOfText(char line [])
 {
+
+    // this fun remove /n from the end of text and if we entered empty line will print that we don't enter any command
+    // return:
+    //        0 if empty command
+    //        1 if not empty command
     int i = 0 ;
     if(line[0]=='\n') // check if user entered empty line
         {printf("no command entered!\n");
@@ -44,40 +46,14 @@ int  remove_endOfText(char line [])
 int parsing(char line[],char *pars[])
 {
 
-    int i = 0 , j = 0 , k = 0;
-    char ch,l[30],prev_ch='k',*word;
-
-    while(1)
+     int i = 0 , j = 0 ;
+    char *p;
+    p = strtok (line," /");
+    while(p!=NULL)
     {
-        ch = line[i];
-        if(ch ==' '&& prev_ch !=' ')
-        {
-            l[k]='\0';
-            word = l;
-            pars[j]=malloc(sizeof(word));
-            strcpy(pars[j],word);
-            k=0;
-            j++;
-        }
-        else if (ch=='\0')
-        {
-            l[k]='\0';
-            word = l;
-            pars[j]=malloc(sizeof(word));
-            strcpy(pars[j],word);
-            j++;
-            break;
-        }
-        else
-        {
-            if(ch!=' ')
-                {
-                    l[k] = ch;
-                    k++;
-                }
-        }
-        prev_ch=ch;
-        i++;
+        pars[j] = p;
+        j++;
+        p = strtok (NULL," /");
     }
     return j;
 }
@@ -85,7 +61,7 @@ int parsing(char line[],char *pars[])
 
 void print_rooe()
 {
-    printf("@Nassar:>");
+    printf("@mr.robot:>");
 }
 
 
