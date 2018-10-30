@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include<sys/types.h>
+#include <sys/wait.h>
+
 void input_handle(char c [],char *pars[])
 {
    int num_of_words=0 , lineflag;
@@ -20,8 +22,11 @@ void input_handle(char c [],char *pars[])
                 printf("%s\n",)
             }
         }*/
-    //wc_command(pars,num_of_words);
-    ls(pars,num_of_words);
+    if(strcmp(pars[0],"ls")==0)
+        ls(pars,num_of_words);
+    else
+      wc_command(pars,num_of_words);
+
     // here we will check what is the command and then we call fun which response for handle this fun
 }
 
@@ -95,7 +100,8 @@ void ls(char *ls[], int c)
     if(c==1 || flag==1)
     {
         // call execute fun
-        printf("correct command we call execute \n"); // for test
+        //printf("correct command we call execute \n"); // for test
+        execute(ls);
     }
 }
 
@@ -111,6 +117,7 @@ int parsing(char line[],char *pars[])
         j++;
         p = strtok (NULL," ");
     }
+    pars[j]='\0';
     return j;
 }
 
@@ -188,21 +195,16 @@ void wc_command(char *command[] , int num_of_words)
 
 void execute(char *command[])
 {
-   char PATH[50] = "/bin/";
-   int stat;
-   printf("path is %s and command is : %s\n",PATH,command[0]);
-   strcat(PATH,command[0]);
-   printf("path is %s\n",PATH);
-   FILE *pf ;
-   char data[512];
-   pf = popen(command,"r");
-   fgets(data,512,pf);
-   printf("%s/n",data);
-   /*pid_t child = fork();
-   if(child==0)
-        printf(execvp(command[0],command));
-   else
-    waitpid(child,NULL,0);*/
+   // printf("command is : %s\n",command[0]);
+    //(execvp(command[0],command));    /*
+   int status;
+    pid_t child = fork();
+    if(child==0)
+        execvp(command[0],command);
+    else
+        waitpid(child,NULL,0);
+
+
 }
 
 int main()
