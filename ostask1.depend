@@ -4,8 +4,10 @@
 	<stdlib.h>
 	<string.h>
 
-1540814094 source:e:\programing\faculty-projects\ostask1\main.c
+1540922687 source:e:\programing\faculty-projects\ostask1\main.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
+	<unistd.h>
+	<sys/types.h>
 
