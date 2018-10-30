@@ -189,7 +189,7 @@ void wc_command(char *command[] , int num_of_words)
             }
             start_index++;
         }
-        execute(command);
+       execute(command);
 
 }
 
@@ -198,7 +198,7 @@ void execute(char *command[])
    // printf("command is : %s\n",command[0]);
     //(execvp(command[0],command));    /*
    int status;
-    pid_t child = fork();
+   pid_t child = fork();
     if(child==0)
         execvp(command[0],command);
     else
