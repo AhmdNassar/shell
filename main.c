@@ -15,7 +15,7 @@ void  echo ( char *line[])
       }
     else
   {
-    printf("%s","error:\n echo has options [-e,-n,-E,--help,--version]");
+    printf("%s","error:\necho has options [-e,-n,-E,--help,--version]");
         }
   }
 //num of string
@@ -34,7 +34,7 @@ void  pwd ( char *line[],int num )
         }
      else
     {
-      printf("%s","error:\n pwd has option [-L,-P,-help,-version]");
+      printf("%s","error:\npwd has option [-L,-P,-help,-version]");
      }
            }
   }
