@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include<sys/types.h>
 #include <sys/wait.h>
+#include <dirent.h>
+
 
 void input_handle(char c [],char *pars[])
 {
@@ -12,7 +14,7 @@ void input_handle(char c [],char *pars[])
    lineflag = remove_endOfText(c); // remove \n from the end of input line and will be 1 if not empty command
    if(lineflag)
         num_of_words = parsing(c,pars);
-        if(!num_of_words&&lineflag) // if command ware just spaces we print no command entered
+        if(!num_of_words&&lineflag) // if command ware just spaces we print no command enteredd
             printf("no command entered!\n");
         /*else
         {
@@ -22,7 +24,10 @@ void input_handle(char c [],char *pars[])
                 printf("%s\n",)
             }
         }*/
-    if(strcmp(pars[0],"ls")==0)
+
+    if(strcmp(pars[0],"cd")==0)
+        cd(pars,num_of_words);
+   else if(strcmp(pars[0],"ls")==0)
         ls(pars,num_of_words);
     else
       wc_command(pars,num_of_words);
@@ -57,6 +62,30 @@ int  remove_endOfText(char line [])
     return 1;
 }
 
+
+void cd(char *command[],int numOfWords)
+{
+    //char *options[]={"..","~","/","-","--","../","."}; -l
+    DIR *dir ;
+    if(numOfWords==1)
+    {
+        execute(command);
+
+    }
+    if(numOfWords>1)
+    {
+        dir = opendir(command[1]);
+        if(!dir)
+        {
+            printf("%s not exist\n",command[1]);
+        }
+        else
+            {
+
+                chdir(command);
+            }
+    }
+}
 void ls(char *ls[], int c)
 {
     // 29 options
@@ -200,9 +229,16 @@ void execute(char *command[])
    int status;
    pid_t child = fork();
     if(child==0)
-        execvp(command[0],command);
+        {
+            execvp(command[0],command);
+
+        }
     else
-        waitpid(child,NULL,0);
+        {
+            waitpid(child,NULL,0);
+        }
+
+
 
 
 }
