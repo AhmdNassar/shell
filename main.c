@@ -7,6 +7,45 @@
 #include <dirent.h>
 
 
+//check the name of fun> echo
+
+void  echo ( char *line[])
+ {
+    if (line[0]=="echo")
+ {
+    printf("execut");
+      }
+    else
+  {
+    printf("%s","error:\necho has options [-e,-n,-E,--help,--version]");
+        }
+  }
+//num of string
+
+void  pwd ( char *line[],int num )
+{
+   if (num==1) //if user enter pwd only
+    {
+   printf("execut");
+    }
+   else if (num >1) //check if user write option or not
+    {
+      if (line[1]=="-help"||line[1]=="-L"||line[1]=="-P"||line[1]=="-version")
+    {
+      printf("execut");
+        }
+     else
+    {
+      printf("%s","error:\npwd has option [-L,-P,-help,-version]");
+     }
+           }
+  }
+
+
+
+
+
+
 void input_handle(char c [],char *pars[])
 {
    int num_of_words=0 , lineflag;
