@@ -2,79 +2,86 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include<sys/types.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <dirent.h>
+#include <fcntl.h>
 
 
-//check the name of fun> echo
 
-void  echo ( char *line[])
- {
-    if (line[0]=="echo")
- {
-    printf("execut");
-      }
-    else
-  {
-    printf("%s","error:\necho has options [-e,-n,-E,--help,--version]");
-        }
-  }
-//num of string
+int flag_in = 0 , flag_out = 0 ,flag_pipe = 0, num_of_words = 0 ,in_file , out_file;
+char *command[100];
+char  line[100];
 
-void  pwd ( char *line[],int num )
+
+void wc_command();
+void execute();
+void  pwd ( );
+void cd();
+void ls();
+void input_handle();
+int  remove_endOfText();
+void parsing();
+
+
+
+
+
+int main()
 {
-   if (num==1) //if user enter pwd only
+    int l = 1 ;
+    while(1)
     {
-   printf("execut");
+        printf("@mr.robot:>");
+        input_handle(); // handle user input (take it and remove \n from the end of it)
+        memset(line,0,sizeof(line)); // make line  zeros
+        num_of_words = 0;
+         flag_in = 0 ; flag_out = 0 ;flag_pipe = 0; num_of_words = 0 ;in_file=0 ;out_file=0;
+       // usleep(1000000);
+
     }
-   else if (num >1) //check if user write option or not
-    {
-      if (line[1]=="-help"||line[1]=="-L"||line[1]=="-P"||line[1]=="-version")
-    {
-      printf("execut");
-        }
-     else
-    {
-      printf("%s","error:\npwd has option [-L,-P,-help,-version]");
-     }
-           }
-  }
-
-
-
-
-
-
-void input_handle(char c [],char *pars[])
-{
-   int num_of_words=0 , lineflag;
-   fgets(c,100,stdin); // read line
-   lineflag = remove_endOfText(c); // remove \n from the end of input line and will be 1 if not empty command
-   if(lineflag)
-        num_of_words = parsing(c,pars);
-        if(!num_of_words&&lineflag) // if command ware just spaces we print no command enteredd
-            printf("no command entered!\n");
-        /*else
-        {
-            int i = 0 ;
-            while(i<num_of_words)
-            {
-                printf("%s\n",)
-            }
-        }*/
-
-    if(strcmp(pars[0],"cd")==0)
-        cd(pars,num_of_words);
-   else if(strcmp(pars[0],"ls")==0)
-        ls(pars,num_of_words);
-    else
-      wc_command(pars,num_of_words);
-
-    // here we will check what is the command and then we call fun which response for handle this fun
+    return 0;
 }
 
-int  remove_endOfText(char line [])
+
+
+
+void input_handle()
+{
+    int  lineflag;
+    fgets(line,100,stdin); // read line
+    lineflag = remove_endOfText(); // remove \n from the end of input line and will be 1 if not empty command
+    if(lineflag)
+        parsing();
+        if(!num_of_words&&lineflag) // if command ware just spaces we print no command enteredd
+            printf("no command entered!\n");
+    if(strcmp("exit",line) == 0) // check if user  input exit to close terminal
+    {
+        printf("exit..\n");
+        exit(0);
+    } 
+    if(flag_in>1)
+        {printf("too many '<'!\n");return;}
+    if(flag_out>1)
+        {printf("too many '>'!\n");return;}
+    if(strcmp(command[0],"cd")==0)
+        cd();
+    /*else if(strcmp(command[0],"ls")==0)
+        ls();*/
+    else if (strcmp(command[0],"wc")==0)
+      wc_command();
+    else if (strcmp(command[0],"pwd")==0)
+        pwd();
+    else if (strcmp(command[0],"cd")==0)
+        cd();
+    else 
+        execute();
+
+
+}
+
+int  remove_endOfText()
 {
 
     // this fun remove /n from the end of text and if we entered empty line will print that we don't enter any command
@@ -83,18 +90,21 @@ int  remove_endOfText(char line [])
     //        1 if not empty command
     int i = 0 ;
     if(line[0]=='\n') // check if user entered empty line
-        {printf("no command entered!\n");
-        return 0;
-        }
-
+        {printf("no command entered!\n"); return 0;}
     else
     {
       while(1)
       {
-          if (line[i]!='\n')
-            i++;
-          else
+        if(line[i]=='<')
+            {flag_in++; line[i]=' '; i++;}
+        else if (line[i]=='>')
+            {flag_out++; line[i]=' ';i++;}
+        else if (line[i]=='|')
+            {flag_pipe++; line[i]=' ';i++;}
+        else if (line[i]=='\n')
             break;
+        else
+            i++;
       }
       line[i]='\0';
     }
@@ -102,16 +112,100 @@ int  remove_endOfText(char line [])
 }
 
 
-void cd(char *command[],int numOfWords)
+void parsing()
 {
-    //char *options[]={"..","~","/","-","--","../","."}; -l
+
+    char *p;
+    p = strtok (line," ");
+    while(p!=NULL)
+    {
+        command[num_of_words] = p;
+        num_of_words++;
+        p = strtok (NULL," ");
+    }
+    command[num_of_words]='\0';
+}
+
+
+
+
+void execute()
+{
+    int status;
+  /*  if(flag_in)
+    {
+        in_file = open(command[1],O_RDONLY); 
+        dup2(in_file,STDIN_FILENO);
+        close(in_file);
+    }
+    if(flag_out)
+    {
+        out_file = creat(command[num_of_words-1],0644);
+        dup2(out_file,1);
+        close(out_file);
+    }
+*/
+   pid_t child = fork();
+   if(child==0)
+        {
+             if(flag_in)
+            {
+                in_file = open(command[1],O_RDONLY); 
+                dup2(in_file,STDIN_FILENO);
+                close(in_file);
+             }
+             if(flag_out)
+            {
+                out_file = open(command[num_of_words-1],  O_CREAT | O_APPEND | O_WRONLY);
+                int ret = dup2(out_file,1);
+                if(ret<0)
+                    perror("dub2");
+                close(out_file);
+            }
+            status =  execvp(command[0],command);
+            if(status==-1)
+                printf("ERROR\n");
+        }
+        
+    else
+        {
+            waitpid(child,NULL,0);
+        }
+
+}
+
+void  pwd ( )
+{
+    if (num_of_words==1) //if user enter pwd only
+    {
+        execute(command);
+    }
+    else if (num_of_words >1) //check if user write option or not
+    {
+        if (command[1]=="-help"||command[1]=="-L"||command[1]=="-P"||command[1]=="-version")
+        {
+           execute(command);
+        }
+        else
+        {
+            printf("ERROR: %s not available option .. pwd has option [-L,-P,-help,-version]",command[1]);
+        }
+    }
+
+}
+
+
+
+
+void cd()
+{
     DIR *dir ;
-    if(numOfWords==1)
+    if(num_of_words==1)
     {
         execute(command);
 
     }
-    if(numOfWords>1)
+    if(num_of_words>1)
     {
         dir = opendir(command[1]);
         if(!dir)
@@ -121,24 +215,24 @@ void cd(char *command[],int numOfWords)
         else
             {
 
-                chdir(command);
+                execute(command);
             }
     }
 }
-void ls(char *ls[], int c)
+void ls()
 {
     // 29 options
 
     // list of available options for ls command
     char *options[] = { "..","../..","~","-l","-L","-a","-A","-al","-AL","-ls","--all","--almost-all","--author","-b","--escape","--ignore-backups","-B","-b","-c","-C","-color","--directory","--dired","-d","-D","-f","-F","--classify","--file-type"};
     int flag=0; // flag = 1 if accepted options and 0 if not
-    if(c>1) // if we have options with ls
+    if(num_of_words>1) // if we have options with ls
     {
         int i=1,j=0;
         char*current ;
-        while (i < c) // iterate on all options to check it's accepted
+        while (i < num_of_words) // iterate on all options to check it's accepted
         {
-            current = ls[i];
+            current = command[i];
             flag = 0 ;
             while(j<29)
                 {
@@ -153,7 +247,7 @@ void ls(char *ls[], int c)
                 }
             if(!flag) // if options not accepted
                 {
-                    printf("%s is not option for ls, accepted options is :\n",ls[i]);
+                    printf("%s is not option for ls, accepted options is :\n",command[i]);
                     int k = 0 ;
                     while(k<29)
                     {
@@ -165,39 +259,16 @@ void ls(char *ls[], int c)
                 }
         }
     }
-    if(c==1 || flag==1)
+    if(num_of_words==1 || flag==1)
     {
-        // call execute fun
-        //printf("correct command we call execute \n"); // for test
-        execute(ls);
+        execute(command);
     }
 }
 
-int parsing(char line[],char *pars[])
-{
-
-     int i = 0 , j = 0 ;
-    char *p;
-    p = strtok (line," ");
-    while(p!=NULL)
-    {
-        pars[j] = p;
-        j++;
-        p = strtok (NULL," ");
-    }
-    pars[j]='\0';
-    return j;
-}
-
-
-void print_rooe()
-{
-    printf("@mr.robot:>");
-}
 
 
 
-void wc_command(char *command[] , int num_of_words)
+void wc_command()
 {
 // handle command wc and call execute fun if command is correct
     char *accepted_par[]={"-c","--bytes","-m","--chars","-l","--lines","--files0-from=-","--files0-from=","-L","--max-line-length","-w","--words","--help","--version","-"};
@@ -224,7 +295,7 @@ void wc_command(char *command[] , int num_of_words)
                     i++;
                 }
                 printf("\n");
-                return 0;
+                return;
             }
             else // option is valid
             {
@@ -238,7 +309,7 @@ void wc_command(char *command[] , int num_of_words)
                 else if(num_of_words==2) // check if user pass files to read from it
                    {
                        printf("missing argument!, you should enter one file name at least \n");
-                       return 0;
+                       return ;
                    }
                 else
                     start_index = 2; // to iterate on files name [command , option , first file has index = 2 ]
@@ -253,58 +324,10 @@ void wc_command(char *command[] , int num_of_words)
             if(f==NULL)
             {
                 printf("file %s not exist!\n",command[start_index]);
-                return 0;
+                return ;
             }
             start_index++;
         }
        execute(command);
 
-}
-
-void execute(char *command[])
-{
-   // printf("command is : %s\n",command[0]);
-    //(execvp(command[0],command));    /*
-   int status;
-   pid_t child = fork();
-    if(child==0)
-        {
-            execvp(command[0],command);
-
-        }
-    else
-        {
-            waitpid(child,NULL,0);
-        }
-
-
-
-
-}
-
-int main()
-{
-    char *pars[100];
-    int l = 1 ;
-    while(l!=0)
-    {
-        print_rooe();
-        char  c[100]; // list of char where we store user input == command line
-        input_handle(c,pars); // handle user input (take it and remove \n from the end of it)
-        if(strcmp("exit",c) == 0) // check if user  input exit to close terminal
-            l=0;
-        else
-        {
-            memset(c,0,sizeof(c)); // make c  zeros
-            //printf(execl("/bin/pwd","pwd",NULL));
-
-        }
-       /* else
-        {
-            printf(execl('/bin/pwd','pwd',NULL));
-        }*/
-    }
-    exit(1);
-
-    return 0;
 }
