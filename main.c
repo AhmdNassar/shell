@@ -11,9 +11,9 @@
 
 
 int flag_in = 0 , flag_out = 0 ,flag_pipe = 0, num_of_words = 0 ,in_file , out_file;
-char *command[100];
+char *command[100] ,*in_path , *out_path;
 char  line[100];
-
+pid_t child;
 
 void wc_command();
 void execute();
@@ -71,8 +71,8 @@ void input_handle()
         ls();*/
     else if (strcmp(command[0],"wc")==0)
       wc_command();
-    else if (strcmp(command[0],"pwd")==0)
-        pwd();
+   /* else if (strcmp(command[0],"pwd")==0)
+        pwd();*/
     else if (strcmp(command[0],"cd")==0)
         cd();
     else 
@@ -124,6 +124,8 @@ void parsing()
         p = strtok (NULL," ");
     }
     command[num_of_words]='\0';
+    //printf("%s\n",command[0]);
+
 }
 
 
@@ -132,34 +134,37 @@ void parsing()
 void execute()
 {
     int status;
-  /*  if(flag_in)
-    {
-        in_file = open(command[1],O_RDONLY); 
-        dup2(in_file,STDIN_FILENO);
-        close(in_file);
-    }
     if(flag_out)
     {
-        out_file = creat(command[num_of_words-1],0644);
-        dup2(out_file,1);
-        close(out_file);
+        out_path = command[num_of_words-1];
+        command[num_of_words-1]='\0';
     }
-*/
-   pid_t child = fork();
+    if(flag_in)
+    {
+        in_path = command[1];
+        command[1]='\0';
+    }
+    if(flag_pipe)
+        piping()
+
+    else
+        child = fork();
    if(child==0)
         {
              if(flag_in)
             {
-                in_file = open(command[1],O_RDONLY); 
-                dup2(in_file,STDIN_FILENO);
+                in_file = open(in_path,O_RDONLY); 
+                int ret = dup2(in_file,STDIN_FILENO);
+                if(ret<0)
+                    perror("dub2 at in\n");
                 close(in_file);
              }
              if(flag_out)
             {
-                out_file = open(command[num_of_words-1],  O_CREAT | O_APPEND | O_WRONLY);
+                out_file = open(out_path,O_WRONLY | O_CREAT, 0644);
                 int ret = dup2(out_file,1);
                 if(ret<0)
-                    perror("dub2");
+                    perror("dub2 at out\n");
                 close(out_file);
             }
             status =  execvp(command[0],command);
@@ -172,6 +177,12 @@ void execute()
             waitpid(child,NULL,0);
         }
 
+}
+
+void piping()
+{
+    int cmds = pipe + 1 , pd[2],i=0;
+    while(i<)
 }
 
 void  pwd ( )
