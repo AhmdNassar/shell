@@ -10,10 +10,10 @@
 
 
 
-int flag_in = 0 , flag_out = 0 ,flag_pipe = 0, num_of_words = 0 ,in_file , out_file;
-char *command[100] ,*in_path , *out_path;
-char  line[100];
-pid_t child;
+int flag_in = 0 , flag_out = 0 ,flag_pipe = 0, num_of_words = 0 ,in_file , out_file , firsLine = 0 ,pd[2];
+char *command[100] ,*in_path , *out_path,* temp[50][50],*command2[100];
+char  line[100], newLine1[50],newLine2[50];
+pid_t child1,child2;
 
 void wc_command();
 void execute();
@@ -22,9 +22,9 @@ void cd();
 void ls();
 void input_handle();
 int  remove_endOfText();
-void parsing();
-
-
+void parsing(char lineToPars[],char *com[]);
+void piping();
+void pipePars(int index);
 
 
 
@@ -36,8 +36,10 @@ int main()
         printf("@mr.robot:>");
         input_handle(); // handle user input (take it and remove \n from the end of it)
         memset(line,0,sizeof(line)); // make line  zeros
+        memset(newLine1,0,sizeof(newLine1));
+        memset(newLine2,0,sizeof(newLine2));
         num_of_words = 0;
-         flag_in = 0 ; flag_out = 0 ;flag_pipe = 0; num_of_words = 0 ;in_file=0 ;out_file=0;
+        flag_in = 0 ; flag_out = 0 ;flag_pipe = 0; num_of_words = 0 ;in_file=0 ;out_file=0;
        // usleep(1000000);
 
     }
@@ -53,9 +55,9 @@ void input_handle()
     fgets(line,100,stdin); // read line
     lineflag = remove_endOfText(); // remove \n from the end of input line and will be 1 if not empty command
     if(lineflag)
-        parsing();
-        if(!num_of_words&&lineflag) // if command ware just spaces we print no command enteredd
-            printf("no command entered!\n");
+        parsing(line,command);
+    if(!num_of_words&&lineflag) // if command ware just spaces we print no command enteredd
+        printf("no command entered!\n");
     if(strcmp("exit",line) == 0) // check if user  input exit to close terminal
     {
         printf("exit..\n");
@@ -65,6 +67,8 @@ void input_handle()
         {printf("too many '<'!\n");return;}
     if(flag_out>1)
         {printf("too many '>'!\n");return;}
+    if(!flag_pipe && lineflag)
+    {
     if(strcmp(command[0],"cd")==0)
         cd();
     /*else if(strcmp(command[0],"ls")==0)
@@ -77,6 +81,8 @@ void input_handle()
         cd();
     else 
         execute();
+    }
+    
 
 
 }
@@ -100,7 +106,7 @@ int  remove_endOfText()
         else if (line[i]=='>')
             {flag_out++; line[i]=' ';i++;}
         else if (line[i]=='|')
-            {flag_pipe++; line[i]=' ';i++;}
+            {flag_pipe++; line[i]='|';pipePars(i);return 0;}
         else if (line[i]=='\n')
             break;
         else
@@ -111,21 +117,83 @@ int  remove_endOfText()
     return 1;
 }
 
-
-void parsing()
+void pipePars(int  index)
 {
+    int i = 0 ; 
 
+    while(i<index)
+    {
+        newLine1[i]=line[i];
+        i++;
+    }
+    newLine1[i]='\0';
+    parsing(newLine1,command);    
+    
+    i = 0 ;
+    index++;
+    while(line[index]==' ')
+    {
+        index++;
+    }
+    while(1)
+    {
+        newLine2[i] = line[index];
+        index++;
+        i++;
+        if(line[index]=='\n')
+            {
+                newLine2[i] ='\0';
+                break;
+            }
+    }
+    i = 0;
+    parsing(newLine2,command2);
+
+
+    pipe(pd);
+    child1 = fork();
+    if(child1==0)
+    {
+        close(1);
+        dup(pd[1]);
+        close(pd[0]);
+        close(pd[1]);
+        execvp(command[0],command);
+        perror("First execvp() failed");
+
+        return;
+    }
+    child2 = fork();
+    if(child2==0)
+    {
+        close(0);
+		dup(pd[0]);
+        //dup2(pd[1],0);
+		close(pd[0]);
+		close(pd[1]);
+        execvp(command2[0],command2);
+        perror("Second execvp() failed");
+        return;
+    }
+    close(pd[0]);
+	close(pd[1]);
+	/* Wait for the children to finish, then exit. */
+	waitpid(child1,NULL,0);
+	waitpid(child2,NULL,0);
+}
+void parsing(char lineToPars[],char *com[])
+{
+    num_of_words = 0 ;
     char *p;
-    p = strtok (line," ");
+    p = strtok (lineToPars," ");
     while(p!=NULL)
     {
-        command[num_of_words] = p;
+        com[num_of_words] = p;
         num_of_words++;
         p = strtok (NULL," ");
     }
-    command[num_of_words]='\0';
-    //printf("%s\n",command[0]);
 
+    com[num_of_words]='\0';
 }
 
 
@@ -133,7 +201,27 @@ void parsing()
 
 void execute()
 {
-    int status;
+    int status , i = 0 , j = 0  ; 
+   /* if(flag_pipe)
+    {
+        while(i<num_of_words)
+        {
+            printf("outer loop j = %d\n",j);
+            while(strcmp(command[i],"|")!=0 )
+            {
+                printf("inner loop j = %d\n",i);
+                temp[j][i] = command[i];
+                i++;
+            }
+            temp[j][i]='\0';
+            i++;
+            j++;
+            
+        }
+        printf("finish piping pars\n");
+        piping(temp);
+        
+    }*/
     if(flag_out)
     {
         out_path = command[num_of_words-1];
@@ -144,12 +232,10 @@ void execute()
         in_path = command[1];
         command[1]='\0';
     }
-    if(flag_pipe)
-        piping()
 
-    else
-        child = fork();
-   if(child==0)
+    
+   child1 = fork();
+   if(child1==0)
         {
              if(flag_in)
             {
@@ -174,15 +260,50 @@ void execute()
         
     else
         {
-            waitpid(child,NULL,0);
+            waitpid(child1,NULL,0);
         }
 
 }
 
 void piping()
 {
-    int cmds = pipe + 1 , pd[2],i=0;
-    while(i<)
+    int cmds = flag_pipe + 1 , p1[2],p2[2],i=0,fd_in=0;
+    pipe(p1);
+    pipe(p2);
+
+    while(i<cmds)
+    {         
+        child1 = fork();        
+        if(child1==0)
+        {
+            if(i==0) // first command
+            {
+                dup2(p1[1],1);
+             }
+            else if(i==flag_pipe)
+            {
+                dup2(p1[1],0);
+            }
+           /*else
+            {
+                close(1);
+                close(0);
+                dup2(p2[1],0);
+                dup2(p1[1],1);
+            }*/
+        close(p1[0]);
+        close(p1[1]);
+
+           execvp(temp[i][0],temp[i]);
+        }
+        else
+        {
+               waitpid(child1,NULL,0);
+               i++;
+        } 
+        
+    }
+
 }
 
 void  pwd ( )
