@@ -8,458 +8,235 @@
 #include <dirent.h>
 #include <fcntl.h>
 
+/*************** global variables *******************/
+int flag_in = 0 , flag_out = 0 , flag_pipe = 0 ,flag_bg = 1,p[2] ,num_of_cmds=0,num_of_words[5]={0,0,0,0,0},in_file,out_file;
+char *cmds[5][100] , *file_in , *file_out , read_line[100] ,*pipe_lines[10],*mainInput;
+pid_t child;
+/***************************************************/
 
 
-int flag_in = 0 , flag_out = 0 ,flag_pipe = 0, num_of_words = 0 ,in_file , out_file , firsLine = 0 ,pd[2];
-char *command[100] ,*in_path , *out_path,* temp[50][50],*command2[100];
-char  line[100], newLine1[50],newLine2[50];
-pid_t child1,child2;
+/**************functions declarations ***********/
 
-void wc_command();
-void execute();
-void  pwd ( );
-void cd();
-void ls();
-void input_handle();
-int  remove_endOfText();
-void parsing(char lineToPars[],char *com[]);
-void piping();
-void pipePars(int index);
-
-
+void handle_special();
+void parsing();
+void exe();
+void exe_child();
+void pipeing();
+void isPipe();
+void pipe_redirect();
+/*************************************************/
 
 int main()
 {
-    int l = 1 ;
+    char *ret;
+    
+    /* main loop */
     while(1)
     {
-        printf("@mr.robot:>");
-        input_handle(); // handle user input (take it and remove \n from the end of it)
-        memset(line,0,sizeof(line)); // make line  zeros
-        memset(newLine1,0,sizeof(newLine1));
-        memset(newLine2,0,sizeof(newLine2));
-        num_of_words = 0;
-        flag_in = 0 ; flag_out = 0 ;flag_pipe = 0; num_of_words = 0 ;in_file=0 ;out_file=0;
-       // usleep(1000000);
-
-    }
-    return 0;
-}
-
-
-
-
-void input_handle()
-{
-    int  lineflag;
-    fgets(line,100,stdin); // read line
-    lineflag = remove_endOfText(); // remove \n from the end of input line and will be 1 if not empty command
-    if(lineflag)
-        parsing(line,command);
-    if(!num_of_words&&lineflag) // if command ware just spaces we print no command enteredd
-        printf("no command entered!\n");
-    if(strcmp("exit",line) == 0) // check if user  input exit to close terminal
-    {
-        printf("exit..\n");
-        exit(0);
-    } 
-    if(flag_in>1)
-        {printf("too many '<'!\n");return;}
-    if(flag_out>1)
-        {printf("too many '>'!\n");return;}
-    if(!flag_pipe && lineflag)
-    {
-    if(strcmp(command[0],"cd")==0)
-        cd();
-    /*else if(strcmp(command[0],"ls")==0)
-        ls();*/
-    else if (strcmp(command[0],"wc")==0)
-      wc_command();
-   /* else if (strcmp(command[0],"pwd")==0)
-        pwd();*/
-    else if (strcmp(command[0],"cd")==0)
-        cd();
-    else 
-        execute();
-    }
-    
-
-
-}
-
-int  remove_endOfText()
-{
-
-    // this fun remove /n from the end of text and if we entered empty line will print that we don't enter any command
-    // return:
-    //        0 if empty command
-    //        1 if not empty command
-    int i = 0 ;
-    if(line[0]=='\n') // check if user entered empty line
-        {printf("no command entered!\n"); return 0;}
-    else
-    {
-      while(1)
-      {
-        if(line[i]=='<')
-            {flag_in++; line[i]=' '; i++;}
-        else if (line[i]=='>')
-            {flag_out++; line[i]=' ';i++;}
-        else if (line[i]=='|')
-            {flag_pipe++; line[i]='|';pipePars(i);return 0;}
-        else if (line[i]=='\n')
-            break;
-        else
-            i++;
-      }
-      line[i]='\0';
-    }
-    return 1;
-}
-
-void pipePars(int  index)
-{
-    int i = 0 ; 
-
-    while(i<index)
-    {
-        newLine1[i]=line[i];
-        i++;
-    }
-    newLine1[i]='\0';
-    parsing(newLine1,command);    
-    
-    i = 0 ;
-    index++;
-    while(line[index]==' ')
-    {
-        index++;
-    }
-    while(1)
-    {
-        newLine2[i] = line[index];
-        index++;
-        i++;
-        if(line[index]=='\n')
-            {
-                newLine2[i] ='\0';
-                break;
-            }
-    }
-    i = 0;
-    parsing(newLine2,command2);
-
-
-    pipe(pd);
-    child1 = fork();
-    if(child1==0)
-    {
-        close(1);
-        dup(pd[1]);
-        close(pd[0]);
-        close(pd[1]);
-        execvp(command[0],command);
-        perror("First execvp() failed");
-
-        return;
-    }
-    child2 = fork();
-    if(child2==0)
-    {
-        close(0);
-		dup(pd[0]);
-        //dup2(pd[1],0);
-		close(pd[0]);
-		close(pd[1]);
-        execvp(command2[0],command2);
-        perror("Second execvp() failed");
-        return;
-    }
-    close(pd[0]);
-	close(pd[1]);
-	/* Wait for the children to finish, then exit. */
-	waitpid(child1,NULL,0);
-	waitpid(child2,NULL,0);
-}
-void parsing(char lineToPars[],char *com[])
-{
-    num_of_words = 0 ;
-    char *p;
-    p = strtok (lineToPars," ");
-    while(p!=NULL)
-    {
-        com[num_of_words] = p;
-        num_of_words++;
-        p = strtok (NULL," ");
-    }
-
-    com[num_of_words]='\0';
-}
-
-
-
-
-void execute()
-{
-    int status , i = 0 , j = 0  ; 
-   /* if(flag_pipe)
-    {
-        while(i<num_of_words)
-        {
-            printf("outer loop j = %d\n",j);
-            while(strcmp(command[i],"|")!=0 )
-            {
-                printf("inner loop j = %d\n",i);
-                temp[j][i] = command[i];
-                i++;
-            }
-            temp[j][i]='\0';
-            i++;
-            j++;
-            
-        }
-        printf("finish piping pars\n");
-        piping(temp);
         
-    }*/
-    if(flag_out)
-    {
-        out_path = command[num_of_words-1];
-        command[num_of_words-1]='\0';
+        printf("mr.robot~>");
+        ret = fgets(read_line,200,stdin); // read input line
+        if(ret==NULL ||strcmp(read_line,"exit\n")==0) // check if user enter exit or ctrl + D ... if he did we exit
+            {printf("exit..\n");exit(0);}
+        isPipe();        // check if command have pipe ( | ) 
+        if(flag_pipe)
+        {
+            pipeing(); // call pipeing function if command contain pipe 
+        }
+        else // command don't contain pipe
+        {
+            handle_special();
+            parsing();
+            exe();
+        }
+        // set all arrays to 0 
+        memset(cmds,0,sizeof(cmds));
+        memset(read_line,0,sizeof(read_line));
+        memset(pipe_lines,0,sizeof(pipe_lines));
+        memset(p,0,sizeof(p));
+        memset(num_of_words,0,sizeof(num_of_words));
+        flag_in = 0 ; flag_bg = 0 ; flag_out = 0 ; flag_pipe = 0 ; 
     }
+ 
+   
+}
+
+void isPipe()
+{
+    // this function check if command contain pipe in it and remove \n from the end of line
+    int i = 0 ;
+    while(1)
+    {
+        if(read_line[i]=='|')
+            flag_pipe++; // increase pipe flag 
+        else if (read_line[i]=='\n') // line end with \n we replace it with \0 (NULL)
+        {
+            read_line[i]='\0';
+            break;
+        }
+        i++;
+
+    }
+}
+void handle_special()
+{
+    /****************************************
+     this function check if command contain :
+        1 - input or output redirect (< or >) 
+        2 -  if it contain & 
+        3 - reomve \n from the end of line 
+     **************************************/
+
+    int i = 0 ;
+    while(1)
+    {
+        if(read_line[i]=='>') 
+            {flag_out++; read_line[i]=' ';i++;} // increase output flag and replace > with space char
+        else if (read_line[i]=='<')
+            {flag_in++; read_line[i]=' ';i++;} // increase input flag and replace < with space char
+
+        else if (read_line[i]=='&')
+            flag_bg++; // command should run in bg
+        else if (read_line[i]=='\0')
+        {
+            break;
+        }
+        i++;      
+    }
+    if(flag_in>1 || flag_out>1) // comand contain more than one input redirect and more than one output redirect
+        printf("Error in i/o redirect, too many redirect!\n");
+
+}
+
+void parsing()
+{
+    num_of_words[flag_pipe]=0;
+    char *s;
+    s = strtok (read_line," \0");
+    while(s!=NULL)
+    {
+        cmds[flag_pipe][num_of_words[flag_pipe]] = s;
+        num_of_words[flag_pipe]++;
+        s = strtok (NULL," ");
+    }
+   cmds[flag_pipe][num_of_words[flag_pipe]]='\0';
+}
+
+void exe()
+{
+    
+    child = fork();
+    if(child==0)
+        exe_child();
+    
+    waitpid(child,NULL,0);
+    return;
+}
+
+void exe_child()
+{
+    int status;
     if(flag_in)
     {
-        in_path = command[1];
-        command[1]='\0';
+        file_in = cmds[flag_pipe][num_of_words[flag_pipe]-1];
+        cmds[flag_pipe][num_of_words[flag_pipe]-1] = '\0';
+        in_file = open(file_in,O_RDONLY);
+        int ret = dup2(in_file,STDIN_FILENO);
+        if(ret<0)
+            perror("i/p redirect error: \n");
+        close(in_file);
+        
     }
-
     
-   child1 = fork();
-   if(child1==0)
-        {
-             if(flag_in)
-            {
-                in_file = open(in_path,O_RDONLY); 
-                int ret = dup2(in_file,STDIN_FILENO);
-                if(ret<0)
-                    perror("dub2 at in\n");
-                close(in_file);
-             }
-             if(flag_out)
-            {
-                out_file = open(out_path,O_WRONLY | O_CREAT, 0644);
-                int ret = dup2(out_file,1);
-                if(ret<0)
-                    perror("dub2 at out\n");
-                close(out_file);
-            }
-            status =  execvp(command[0],command);
-            if(status==-1)
-                printf("ERROR\n");
-        }
-        
+    if(flag_out)
+    {
+        file_out = cmds[flag_pipe][num_of_words[flag_pipe]-1];
+        cmds[flag_pipe][num_of_words[flag_pipe]-1] = '\0';
+        out_file = open(file_out,O_WRONLY | O_CREAT, 0644);
+        int ret = dup2(out_file,1);
+        if(ret<0)
+            perror("o/p redirect error: \n");
+        close(out_file);
+    }
+    if(strcmp(cmds[flag_pipe][0],"cd")!=0)
+        status =  execvp(cmds[flag_pipe][0],cmds[flag_pipe]);
     else
-        {
-            waitpid(child1,NULL,0);
-        }
+        status =  chdir(cmds[flag_pipe][1]);
+    if(status==-1)
+        perror("cmd error:");
 
 }
 
-void piping()
+void pipeing()
 {
-    int cmds = flag_pipe + 1 , p1[2],p2[2],i=0,fd_in=0;
-    pipe(p1);
-    pipe(p2);
-
-    while(i<cmds)
-    {         
-        child1 = fork();        
-        if(child1==0)
-        {
-            if(i==0) // first command
-            {
-                dup2(p1[1],1);
-             }
-            else if(i==flag_pipe)
-            {
-                dup2(p1[1],0);
-            }
-           /*else
-            {
-                close(1);
-                close(0);
-                dup2(p2[1],0);
-                dup2(p1[1],1);
-            }*/
-        close(p1[0]);
-        close(p1[1]);
-
-           execvp(temp[i][0],temp[i]);
-        }
-        else
-        {
-               waitpid(child1,NULL,0);
-               i++;
-        } 
-        
+    num_of_cmds = 0 ;
+    char *s;
+    s = strtok(read_line,"|");
+    while(s!=NULL)
+    {
+        pipe_lines[num_of_cmds] = s;
+        num_of_cmds++;
+        s = strtok(NULL,"|");
     }
-
+    flag_pipe = 0 ; 
+    while(flag_pipe<num_of_cmds)
+    {
+        flag_in = 0 ; flag_out = 0 ;
+        strcpy(read_line,pipe_lines[flag_pipe]);
+        handle_special();
+        if(flag_pipe!=0 && flag_in)
+        {
+            printf("only first cmd in pipe can have i/p redirect..\n");
+            return;
+        }
+        else if (flag_pipe!=num_of_cmds-1 && flag_out)
+        {
+            printf("only last cmd in pipe can have o/p redirect..\n");
+            return;
+        }
+       // printf("current line is :%s55\n",read_line);
+        parsing();
+        //printf("current cmd is :%s55\n",cmds[flag_pipe][1]);
+        pipe_redirect();
+        flag_pipe++;
+    }
 }
 
-void  pwd ( )
+void pipe_redirect()
 {
-    if (num_of_words==1) //if user enter pwd only
+    //pipe(p);
+    int file = 0 ;
+    child = fork();
+    if(child==0)
     {
-        execute(command);
-    }
-    else if (num_of_words >1) //check if user write option or not
-    {
-        if (command[1]=="-help"||command[1]=="-L"||command[1]=="-P"||command[1]=="-version")
+        if(flag_pipe==0)
         {
-           execute(command);
+           /* printf("first cmd is :%s\n",cmds[flag_pipe][0]);
+            close(1);
+            dup(p[1]);
+            close(p[0]);
+            close(p[1]);*/
+            file = open("pipe.txt",O_WRONLY | O_CREAT, 0644);
+            int ret = dup2(file,1);
+            close(file);
+            exe_child();// cal execute func
         }
-        else
+        else if (flag_pipe==num_of_cmds-1)
         {
-            printf("ERROR: %s not available option .. pwd has option [-L,-P,-help,-version]",command[1]);
-        }
-    }
+            /*printf("sec cmd is :%s\n",cmds[flag_pipe][0]);
+            close(0);
+            dup(p[0]);
+            close(p[0]);
+            close(p[1]);*/
+            file = open("pipe.txt",O_RDONLY);
+            int ret = dup2(file,STDIN_FILENO);
+            close(file);
+            exe_child();// cal execute func
 
+        }
+     
+    }
+    
+    waitpid(child,NULL,0);
 }
 
-
-
-
-void cd()
-{
-    DIR *dir ;
-    if(num_of_words==1)
-    {
-        execute(command);
-
-    }
-    if(num_of_words>1)
-    {
-        dir = opendir(command[1]);
-        if(!dir)
-        {
-            printf("%s not exist\n",command[1]);
-        }
-        else
-            {
-
-                execute(command);
-            }
-    }
-}
-void ls()
-{
-    // 29 options
-
-    // list of available options for ls command
-    char *options[] = { "..","../..","~","-l","-L","-a","-A","-al","-AL","-ls","--all","--almost-all","--author","-b","--escape","--ignore-backups","-B","-b","-c","-C","-color","--directory","--dired","-d","-D","-f","-F","--classify","--file-type"};
-    int flag=0; // flag = 1 if accepted options and 0 if not
-    if(num_of_words>1) // if we have options with ls
-    {
-        int i=1,j=0;
-        char*current ;
-        while (i < num_of_words) // iterate on all options to check it's accepted
-        {
-            current = command[i];
-            flag = 0 ;
-            while(j<29)
-                {
-                  if (strcmp(current,options[j])==0)
-                    {
-                       i++;
-                       j=0;
-                       flag=1;
-                       break;
-                    }
-                  j++;
-                }
-            if(!flag) // if options not accepted
-                {
-                    printf("%s is not option for ls, accepted options is :\n",command[i]);
-                    int k = 0 ;
-                    while(k<29)
-                    {
-                        printf("%s,",options[k]);
-                        k++;
-                    }
-                    printf("\n");
-                    break;
-                }
-        }
-    }
-    if(num_of_words==1 || flag==1)
-    {
-        execute(command);
-    }
-}
-
-
-
-
-void wc_command()
-{
-// handle command wc and call execute fun if command is correct
-    char *accepted_par[]={"-c","--bytes","-m","--chars","-l","--lines","--files0-from=-","--files0-from=","-L","--max-line-length","-w","--words","--help","--version","-"};
-    int start_index = 1;
-    if(command[1][0]=='-') // check if user input option for wc
-        {
-            int i =0,flag=0;
-            while(i<15) // check if option is valid
-            {
-                if(strcmp(command[1],accepted_par[i])==0)
-                {
-                    flag = 1;
-                    break;
-                }
-                i++;
-            }
-            if(!flag) // option not valid
-            {
-                printf("%s not option for wc, options is:\n",command[1]);
-                i = 0;
-                while(i<15)
-                {
-                    printf("%s, ",accepted_par[i]);
-                    i++;
-                }
-                printf("\n");
-                return;
-            }
-            else // option is valid
-            {
-                if(strcmp(command[1],"-")==0||strcmp(command[1],"--files0-from=-")==0) // check if we will get input from stream
-                {
-                    // TODO : we should call execute and read input from stdin
-
-                    // to test it's work
-                    printf("we should take input from stdin \n");
-                }
-                else if(num_of_words==2) // check if user pass files to read from it
-                   {
-                       printf("missing argument!, you should enter one file name at least \n");
-                       return ;
-                   }
-                else
-                    start_index = 2; // to iterate on files name [command , option , first file has index = 2 ]
-
-            }
-        }
-        // check that input file is exist
-        while(start_index<num_of_words)
-        {
-            FILE *f;
-            f =fopen(command[start_index],"r");
-            if(f==NULL)
-            {
-                printf("file %s not exist!\n",command[start_index]);
-                return ;
-            }
-            start_index++;
-        }
-       execute(command);
-
-}
